@@ -1,4 +1,4 @@
-taf-fastp 1.3.3-r1
+taf-fastp 1.3.3-r2
 
 TAFFISH wrapper for fastp, the ultrafast all-in-one FASTQ preprocessing and
 quality-control tool for short-read sequencing data.
@@ -100,7 +100,7 @@ Notes:
     directory or from mounted user paths.
 
 Container:
-  image: ghcr.io/taffish/fastp:1.3.3-r1
+  image: ghcr.io/taffish/fastp:1.3.3-r2
   supported backends: apptainer, podman, docker
   supported platforms: linux/amd64, linux/arm64
 

@@ -20,7 +20,7 @@ taf install fastp
 Install the exact release:
 
 ```sh
-taf install fastp 1.3.3-r1
+taf install fastp 1.3.3-r2
 ```
 
 For local testing before the app is published to the public index:
@@ -144,9 +144,9 @@ taf-fastp fastp --help
 ```text
 name: fastp
 command: taf-fastp
-version: 1.3.3-r1
+version: 1.3.3-r2
 kind: tool
-image: ghcr.io/taffish/fastp:1.3.3-r1
+image: ghcr.io/taffish/fastp:1.3.3-r2
 ```
 
 ## Container
@@ -217,6 +217,10 @@ container and representative fastp functionality, not every possible
 combination of upstream options or full scientific correctness for every data
 type.
 
+Each smoke command is self-contained because the public index runs every
+`[smoke].test` entry in a fresh temporary container. No smoke entry depends on
+files created by an earlier entry.
+
 ## Upstream
 
 - Project: fastp
@@ -235,11 +239,11 @@ Useful checks before publishing:
 taf check
 taf compile -- fastp --version
 taf publish --release --dry-run
-docker build -t ghcr.io/taffish/fastp:1.3.3-r1 -f docker/Dockerfile .
-docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.3-r1-amd64-test -f docker/Dockerfile .
-docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.3-r1-arm64-test -f docker/Dockerfile .
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r1 fastp --version
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r1 fastp --help
+docker build -t ghcr.io/taffish/fastp:1.3.3-r2 -f docker/Dockerfile .
+docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.3-r2-amd64-test -f docker/Dockerfile .
+docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.3-r2-arm64-test -f docker/Dockerfile .
+docker run --rm ghcr.io/taffish/fastp:1.3.3-r2 fastp --version
+docker run --rm ghcr.io/taffish/fastp:1.3.3-r2 fastp --help
 ```
 
 The repository wrapper files are licensed under Apache-2.0. Upstream fastp is
