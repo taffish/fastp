@@ -2,7 +2,7 @@
 name = "fastp"
 kind = "tool"
 version = "1.3.3"
-release = 2
+release = 3
 license = "Apache-2.0"
 main = "src/main.taf"
 
@@ -23,7 +23,7 @@ pipe = true
 command_mode = true
 
 [container]
-image = "ghcr.io/taffish/fastp:1.3.3-r2"
+image = "ghcr.io/taffish/fastp:1.3.3-r3"
 dockerfile = "docker/Dockerfile"
 build_platforms = "linux/amd64,linux/arm64"
 

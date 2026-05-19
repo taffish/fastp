@@ -8,6 +8,10 @@ This repository packages upstream fastp 1.3.3 as a TAFFISH tool app. It builds
 the official `v1.3.3` source release in a Debian 12 container image and exposes
 the upstream `fastp` executable through the versioned `taf-fastp` command.
 
+Release `1.3.3-r3` is a help-only TAFFISH update. It keeps the upstream
+software, Dockerfile, runtime dependencies, smoke tests, and command behavior
+unchanged from `1.3.3-r2`, and refreshes the terminal `taf-fastp --help` text.
+
 ## Installation
 
 Install from the public TAFFISH Hub index:
@@ -20,7 +24,7 @@ taf install fastp
 Install the exact release:
 
 ```sh
-taf install fastp 1.3.3-r2
+taf install fastp 1.3.3-r3
 ```
 
 For local testing before the app is published to the public index:
@@ -144,9 +148,9 @@ taf-fastp fastp --help
 ```text
 name: fastp
 command: taf-fastp
-version: 1.3.3-r2
+version: 1.3.3-r3
 kind: tool
-image: ghcr.io/taffish/fastp:1.3.3-r2
+image: ghcr.io/taffish/fastp:1.3.3-r3
 ```
 
 ## Container
@@ -239,11 +243,11 @@ Useful checks before publishing:
 taf check
 taf compile -- fastp --version
 taf publish --release --dry-run
-docker build -t ghcr.io/taffish/fastp:1.3.3-r2 -f docker/Dockerfile .
-docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.3-r2-amd64-test -f docker/Dockerfile .
-docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.3-r2-arm64-test -f docker/Dockerfile .
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r2 fastp --version
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r2 fastp --help
+docker build -t ghcr.io/taffish/fastp:1.3.3-r3 -f docker/Dockerfile .
+docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.3-r3-amd64-test -f docker/Dockerfile .
+docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.3-r3-arm64-test -f docker/Dockerfile .
+docker run --rm ghcr.io/taffish/fastp:1.3.3-r3 fastp --version
+docker run --rm ghcr.io/taffish/fastp:1.3.3-r3 fastp --help
 ```
 
 The repository wrapper files are licensed under Apache-2.0. Upstream fastp is
