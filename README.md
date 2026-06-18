@@ -4,13 +4,13 @@ TAFFISH wrapper for [fastp](https://github.com/OpenGene/fastp), the ultrafast
 all-in-one FASTQ preprocessing and quality-control tool for short-read
 sequencing data.
 
-This repository packages upstream fastp 1.3.3 as a TAFFISH tool app. It builds
-the official `v1.3.3` source release in a Debian 12 container image and exposes
+This repository packages upstream fastp 1.3.4 as a TAFFISH tool app. It builds
+the official `v1.3.4` source release in a Debian 12 container image and exposes
 the upstream `fastp` executable through the versioned `taf-fastp` command.
 
-Release `1.3.3-r3` is a help-only TAFFISH update. It keeps the upstream
-software, Dockerfile, runtime dependencies, smoke tests, and command behavior
-unchanged from `1.3.3-r2`, and refreshes the terminal `taf-fastp --help` text.
+Release `1.3.4-r1` updates the packaged upstream source to fastp `v1.3.4`.
+Upstream describes this as a bug-fix release for uncompressed output behavior,
+including a `--stdout` remaining-buffer fix.
 
 ## Installation
 
@@ -24,7 +24,7 @@ taf install fastp
 Install the exact release:
 
 ```sh
-taf install fastp 1.3.3-r3
+taf install fastp 1.3.4-r1
 ```
 
 For local testing before the app is published to the public index:
@@ -148,15 +148,15 @@ taf-fastp fastp --help
 ```text
 name: fastp
 command: taf-fastp
-version: 1.3.3-r3
+version: 1.3.4-r1
 kind: tool
-image: ghcr.io/taffish/fastp:1.3.3-r3
+image: ghcr.io/taffish/fastp:1.3.4-r1
 ```
 
 ## Container
 
 The container image is built from `docker/Dockerfile`. It starts from
-`debian:12-slim`, downloads the upstream `v1.3.3` source archive from GitHub,
+`debian:12-slim`, downloads the upstream `v1.3.4` source archive from GitHub,
 builds the required `isa-l`, `libdeflate`, and Google Highway libraries, and
 installs fastp into `/usr/local/bin`.
 
@@ -181,6 +181,9 @@ libdeflate 1.25
 Google Highway 1.3.0
 ```
 
+The Dockerfile verifies SHA256 checksums for the fastp, isa-l, libdeflate, and
+Google Highway source archives before building.
+
 `libdeflate` and Google Highway are linked into the fastp binary. `isa-l` is
 provided as a runtime shared library so the same Dockerfile can build cleanly on
 both amd64 and arm64.
@@ -203,7 +206,7 @@ The TAFFISH metadata declares a Docker smoke check:
 
 ```text
 exist: fastp, parallel.py, python, python3
-test:  fastp reports upstream version 1.3.3
+test:  fastp reports upstream version 1.3.4
 test:  upstream fastp help is available
 test:  upstream parallel.py help is available
 test:  the fastp binary resolves the bundled isa-l runtime library
@@ -229,7 +232,7 @@ files created by an earlier entry.
 
 - Project: fastp
 - Source: <https://github.com/OpenGene/fastp>
-- Release: <https://github.com/OpenGene/fastp/releases/tag/v1.3.3>
+- Release: <https://github.com/OpenGene/fastp/releases/tag/v1.3.4>
 - Upstream license: MIT
 - Primary citation: Chen 2025, doi:10.1002/imt2.70078, PMID:41112039
 - Additional citations: Chen 2023, doi:10.1002/imt2.107; Chen et al. 2018,
@@ -242,12 +245,12 @@ Useful checks before publishing:
 ```sh
 taf check
 taf compile -- fastp --version
-taf publish --release --dry-run
-docker build -t ghcr.io/taffish/fastp:1.3.3-r3 -f docker/Dockerfile .
-docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.3-r3-amd64-test -f docker/Dockerfile .
-docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.3-r3-arm64-test -f docker/Dockerfile .
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r3 fastp --version
-docker run --rm ghcr.io/taffish/fastp:1.3.3-r3 fastp --help
+taf publish --build --release --dry-run
+docker build -t ghcr.io/taffish/fastp:1.3.4-r1 -f docker/Dockerfile .
+docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.4-r1-amd64-test -f docker/Dockerfile .
+docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.4-r1-arm64-test -f docker/Dockerfile .
+docker run --rm ghcr.io/taffish/fastp:1.3.4-r1 fastp --version
+docker run --rm ghcr.io/taffish/fastp:1.3.4-r1 fastp --help
 ```
 
 The repository wrapper files are licensed under Apache-2.0. Upstream fastp is

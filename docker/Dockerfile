@@ -1,15 +1,23 @@
-ARG FASTP_VERSION=1.3.3
+ARG FASTP_VERSION=1.3.4
+ARG FASTP_SHA256=105c948dc11e567ca6d7532f76ef53b456505256b5ba16012a0182810c28b591
 ARG ISAL_VERSION=2.31.0
+ARG ISAL_SHA256=e218b7b2e241cfb8e8b68f54a6e5eed80968cc387c4b1af03708b54e9fb236f1
 ARG LIBDEFLATE_VERSION=1.25
+ARG LIBDEFLATE_SHA256=d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d
 ARG HIGHWAY_VERSION=1.3.0
+ARG HIGHWAY_SHA256=07b3c1ba2c1096878a85a31a5b9b3757427af963b1141ca904db2f9f4afe0bc2
 
 FROM debian:12-slim AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG FASTP_VERSION
+ARG FASTP_SHA256
 ARG ISAL_VERSION
+ARG ISAL_SHA256
 ARG LIBDEFLATE_VERSION
+ARG LIBDEFLATE_SHA256
 ARG HIGHWAY_VERSION
+ARG HIGHWAY_SHA256
 
 RUN set -eux; \
     for attempt in 1 2 3; do \
@@ -37,6 +45,7 @@ WORKDIR /tmp/build/isa-l
 
 RUN curl -fsSL "https://github.com/intel/isa-l/archive/refs/tags/v${ISAL_VERSION}.tar.gz" \
       -o isa-l.tar.gz \
+ && echo "${ISAL_SHA256}  isa-l.tar.gz" | sha256sum -c - \
  && tar -xzf isa-l.tar.gz --strip-components=1 \
  && ./autogen.sh \
  && ./configure \
@@ -51,6 +60,7 @@ WORKDIR /tmp/build/libdeflate
 
 RUN curl -fsSL "https://github.com/ebiggers/libdeflate/archive/refs/tags/v${LIBDEFLATE_VERSION}.tar.gz" \
       -o libdeflate.tar.gz \
+ && echo "${LIBDEFLATE_SHA256}  libdeflate.tar.gz" | sha256sum -c - \
  && tar -xzf libdeflate.tar.gz --strip-components=1 \
  && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \
@@ -66,6 +76,7 @@ WORKDIR /tmp/build/highway
 
 RUN curl -fsSL "https://github.com/google/highway/archive/refs/tags/${HIGHWAY_VERSION}.tar.gz" \
       -o highway.tar.gz \
+ && echo "${HIGHWAY_SHA256}  highway.tar.gz" | sha256sum -c - \
  && tar -xzf highway.tar.gz --strip-components=1 \
  && cmake -S . -B build \
       -DCMAKE_BUILD_TYPE=Release \
@@ -81,6 +92,7 @@ WORKDIR /tmp/build/fastp
 
 RUN curl -fsSL "https://github.com/OpenGene/fastp/archive/refs/tags/v${FASTP_VERSION}.tar.gz" \
       -o fastp.tar.gz \
+ && echo "${FASTP_SHA256}  fastp.tar.gz" | sha256sum -c - \
  && tar -xzf fastp.tar.gz --strip-components=1 \
  && PKG_CONFIG_PATH=/opt/fastp-deps/lib/pkgconfig \
       make -j"$(nproc)" \
