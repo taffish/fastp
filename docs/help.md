@@ -1,4 +1,4 @@
-taf-fastp 1.3.5-r1
+taf-fastp 1.3.6-r1
 
 TAFFISH wrapper for fastp, an all-in-one FASTQ preprocessing and QC tool for
 short-read sequencing data.
@@ -49,17 +49,17 @@ Notes:
   Run taf-fastp fastp --help for the complete upstream option list.
   fastp writes fastp.html and fastp.json by default unless -h and -j are set.
   Outputs are gzip-compressed when output file names end with .gz.
-  This release packages upstream fastp v1.3.5, which fixes a possible hang
-  caused by the BGZF reader.
+  This release packages upstream fastp v1.3.6, which limits worker and BGZF
+  reader thread counts for improved performance on high-core systems.
   This image does not bundle fastplong, FastQC, MultiQC, aligners, or
   downstream analysis tools. parallel.py is included for upstream batch runs.
 
 Container:
-  image: ghcr.io/taffish/fastp:1.3.5-r1
+  image: ghcr.io/taffish/fastp:1.3.6-r1
   platforms: linux/amd64, linux/arm64
 
 Upstream:
   source:  https://github.com/OpenGene/fastp
-  release: v1.3.5
+  release: v1.3.6
   license: MIT
   citation: Chen 2025, doi:10.1002/imt2.70078, PMID:41112039

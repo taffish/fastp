@@ -1,5 +1,5 @@
-ARG FASTP_VERSION=1.3.5
-ARG FASTP_SHA256=9c1f6c1cc48c93381071de7cd5ccca5d975cfa2c44985885894ab89f7236ea7d
+ARG FASTP_VERSION=1.3.6
+ARG FASTP_SHA256=4a282e9bbcbce849cd4ed3527e59469ad2cf7cf8d3cbe99debabaca985030946
 ARG ISAL_VERSION=2.31.0
 ARG ISAL_SHA256=e218b7b2e241cfb8e8b68f54a6e5eed80968cc387c4b1af03708b54e9fb236f1
 ARG LIBDEFLATE_VERSION=1.25
@@ -152,6 +152,9 @@ RUN set -eux; \
     test -s report.json; \
     grep -F '"fastp_version": "' report.json >/dev/null; \
     grep -F "@r1" clean.fq >/dev/null; \
+    fastp -i reads.fq -o thread.fq -w 9999 >/tmp/fastp-thread.log 2>&1; \
+    grep -F "Reduce worker threads to " /tmp/fastp-thread.log >/dev/null; \
+    test -s thread.fq; \
     fastp --stdin --stdout -w 1 < reads.fq > stdout.fq 2>/tmp/fastp-stdin.log; \
     grep -F "@r1" stdout.fq >/dev/null; \
     printf "@p1/1\nACGTACGTACGTACGTACGT\n+\nFFFFFFFFFFFFFFFFFFFF\n" > r1.fq; \
@@ -171,7 +174,7 @@ RUN set -eux; \
     test -s batch-report/sample_pe.fq.json; \
     test -s batch-report/overall.html; \
     cd /; \
-    rm -rf /tmp/fastp-test /tmp/fastp-se.log /tmp/fastp-stdin.log /tmp/fastp-pe.log /tmp/fastp-parallel.log
+    rm -rf /tmp/fastp-test /tmp/fastp-se.log /tmp/fastp-thread.log /tmp/fastp-stdin.log /tmp/fastp-pe.log /tmp/fastp-parallel.log
 
 WORKDIR /root
 
