@@ -1,5 +1,5 @@
-ARG FASTP_VERSION=1.3.6
-ARG FASTP_SHA256=4a282e9bbcbce849cd4ed3527e59469ad2cf7cf8d3cbe99debabaca985030946
+ARG FASTP_VERSION=1.3.7
+ARG FASTP_SHA256=5b7d6880c66e9e10e5923c68ee0c0b5a30f59bd252d836c379c74f8533c26993
 ARG ISAL_VERSION=2.31.0
 ARG ISAL_SHA256=e218b7b2e241cfb8e8b68f54a6e5eed80968cc387c4b1af03708b54e9fb236f1
 ARG LIBDEFLATE_VERSION=1.25
@@ -7,7 +7,7 @@ ARG LIBDEFLATE_SHA256=d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a
 ARG HIGHWAY_VERSION=1.3.0
 ARG HIGHWAY_SHA256=07b3c1ba2c1096878a85a31a5b9b3757427af963b1141ca904db2f9f4afe0bc2
 
-FROM debian:12-slim AS builder
+FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ARG FASTP_VERSION
@@ -107,9 +107,31 @@ RUN curl -fsSL "https://github.com/OpenGene/fastp/archive/refs/tags/v${FASTP_VER
  && LD_LIBRARY_PATH=/opt/fastp-deps/lib /opt/fastp/bin/fastp --help 2>&1 | grep -F "usage:" >/dev/null \
  && test -x /opt/fastp/bin/parallel.py
 
-FROM debian:12-slim
+# Remove only debug sections; retain runtime symbols and original notices.
+RUN strip --strip-debug /opt/fastp/bin/fastp /opt/fastp-deps/lib/libisal.so.2.0.31 \
+ && mkdir -p /opt/fastp/share/doc/fastp/isa-l /opt/fastp/share/doc/fastp/libdeflate /opt/fastp/share/doc/fastp/highway \
+ && install -m 0644 /tmp/build/isa-l/LICENSE /opt/fastp/share/doc/fastp/isa-l/LICENSE \
+ && install -m 0644 /tmp/build/libdeflate/COPYING /opt/fastp/share/doc/fastp/libdeflate/COPYING \
+ && install -m 0644 /tmp/build/highway/LICENSE /tmp/build/highway/LICENSE-BSD3 /opt/fastp/share/doc/fastp/highway/ \
+ && for source in cmdline.h writer.cpp writer.h fastqreader.cpp fastqreader.h singleproducersingleconsumerlist.h; do \
+      install -D -m 0644 "/tmp/build/fastp/src/$source" "/opt/fastp/share/doc/fastp/source-notices/src/$source"; \
+    done \
+ && printf 'fastp %s %s\nisa-l %s %s\nlibdeflate %s %s\nhighway %s %s\n' \
+      "$FASTP_VERSION" "$FASTP_SHA256" "$ISAL_VERSION" "$ISAL_SHA256" \
+      "$LIBDEFLATE_VERSION" "$LIBDEFLATE_SHA256" "$HIGHWAY_VERSION" "$HIGHWAY_SHA256" \
+      > /opt/fastp/share/doc/fastp/source-archives.txt
+
+COPY docker/report-assets.lock /opt/fastp/report-assets/report-assets.lock
+RUN cd /opt/fastp/report-assets \
+ && while read -r digest name url; do \
+      curl -fsSL --retry 3 "$url" -o "$name" \
+      && echo "$digest  $name" | sha256sum -c - || exit 1; \
+    done < report-assets.lock
+
+FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1
 ARG FASTP_VERSION
 
 RUN set -eux; \
@@ -133,6 +155,10 @@ COPY --from=builder /opt/fastp/bin/fastp /usr/local/bin/fastp
 COPY --from=builder /opt/fastp/bin/parallel.py /usr/local/bin/parallel.py
 COPY --from=builder /opt/fastp/share/doc/fastp/ /usr/local/share/doc/fastp/
 COPY --from=builder /opt/fastp-deps/lib/libisal.so.2.0.31 /usr/local/lib/libisal.so.2.0.31
+COPY --from=builder /opt/fastp/report-assets/ /usr/local/share/fastp/report-assets/
+COPY docker/fastp-report-offline.py /usr/local/bin/fastp-report-offline
+COPY docker/fastp-smoke.py /usr/local/share/fastp/fastp-smoke.py
+COPY docker/notices.sha256 /usr/local/share/doc/fastp/notices.sha256
 
 RUN ln -sf libisal.so.2.0.31 /usr/local/lib/libisal.so.2 \
  && ln -sf libisal.so.2.0.31 /usr/local/lib/libisal.so \
@@ -142,39 +168,10 @@ RUN ln -sf libisal.so.2.0.31 /usr/local/lib/libisal.so.2 \
  && parallel.py -h 2>&1 | grep -F "A python script to use fastp" >/dev/null \
  && ldd "$(command -v fastp)" | grep -F "libisal" >/dev/null
 
-RUN set -eux; \
-    mkdir -p /tmp/fastp-test; \
-    cd /tmp/fastp-test; \
-    printf "@r1\nACGTACGTACGTACGTACGT\n+\nFFFFFFFFFFFFFFFFFFFF\n@r2\nACGTACGTNNNNACGTACGT\n+\nFFFFFFFF!!!!FFFFFFFF\n" > reads.fq; \
-    fastp -i reads.fq -o clean.fq -h report.html -j report.json -w 1 >/tmp/fastp-se.log 2>&1; \
-    test -s clean.fq; \
-    test -s report.html; \
-    test -s report.json; \
-    grep -F '"fastp_version": "' report.json >/dev/null; \
-    grep -F "@r1" clean.fq >/dev/null; \
-    fastp -i reads.fq -o thread.fq -w 9999 >/tmp/fastp-thread.log 2>&1; \
-    grep -F "Reduce worker threads to " /tmp/fastp-thread.log >/dev/null; \
-    test -s thread.fq; \
-    fastp --stdin --stdout -w 1 < reads.fq > stdout.fq 2>/tmp/fastp-stdin.log; \
-    grep -F "@r1" stdout.fq >/dev/null; \
-    printf "@p1/1\nACGTACGTACGTACGTACGT\n+\nFFFFFFFFFFFFFFFFFFFF\n" > r1.fq; \
-    printf "@p1/2\nTGCATGCATGCATGCATGCA\n+\nFFFFFFFFFFFFFFFFFFFF\n" > r2.fq; \
-    fastp -i r1.fq -I r2.fq -o out1.fq.gz -O out2.fq.gz -h pe.html -j pe.json -w 1 >/tmp/fastp-pe.log 2>&1; \
-    test -s out1.fq.gz; \
-    test -s out2.fq.gz; \
-    test -s pe.html; \
-    test -s pe.json; \
-    mkdir -p batch-in batch-out batch-report; \
-    cp r1.fq batch-in/sample_R1.fq; \
-    cp r2.fq batch-in/sample_R2.fq; \
-    parallel.py -i batch-in -o batch-out -r batch-report -p 1 -a "-w 1" >/tmp/fastp-parallel.log; \
-    test -s batch-out/sample_R1.clean.fastq.gz; \
-    test -s batch-out/sample_R2.clean.fastq.gz; \
-    test -s batch-report/sample_pe.fq.html; \
-    test -s batch-report/sample_pe.fq.json; \
-    test -s batch-report/overall.html; \
-    cd /; \
-    rm -rf /tmp/fastp-test /tmp/fastp-se.log /tmp/fastp-thread.log /tmp/fastp-stdin.log /tmp/fastp-pe.log /tmp/fastp-parallel.log
+RUN chmod 0755 /usr/local/bin/fastp-report-offline \
+ && fastp-report-offline --help >/dev/null \
+ && python3 /usr/local/share/fastp/fastp-smoke.py licenses \
+ && python3 /usr/local/share/fastp/fastp-smoke.py buildtime
 
 WORKDIR /root
 

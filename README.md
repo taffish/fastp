@@ -1,260 +1,261 @@
 # taf-fastp
 
-TAFFISH wrapper for [fastp](https://github.com/OpenGene/fastp), the ultrafast
-all-in-one FASTQ preprocessing and quality-control tool for short-read
-sequencing data.
+TAFFISH tool app for [fastp](https://github.com/OpenGene/fastp): preprocessing,
+filtering, adapter trimming and quality control of short-read FASTQ data.
 
-This repository packages upstream fastp 1.3.6 as a TAFFISH tool app. It builds
-the official `v1.3.6` source release in a Debian 12 container image and exposes
-the upstream `fastp` executable through the versioned `taf-fastp` command.
+## Package and upstream
 
-Release `1.3.6-r1` updates the packaged upstream source to fastp `v1.3.6`.
-Upstream describes this as a performance release that limits the worker thread
-count and BGZF reader thread count on high-core systems. Build dependencies and
-the TAFFISH wrapper design are unchanged from `1.3.5-r1`.
+| Field | Value |
+|---|---|
+| Package / command | fastp / taf-fastp |
+| Version | 1.3.7-r1 |
+| Image | ghcr.io/taffish/fastp:1.3.7-r1 |
+| Native platforms | linux/amd64, linux/arm64 |
+| Upstream | OpenGene/fastp v1.3.7 |
+| Source commit | 8a2397b6628ae14127efdb7566f67fc05f9aea56 |
+
+[Upstream 1.3.7](https://github.com/OpenGene/fastp/releases/tag/v1.3.7)
+fixes concatenated BGZF inputs containing embedded EOF blocks, avoids
+pre-evaluating non-seekable inputs, fixes pairing when a batch directory name
+contains R1, and creates BINDIR during installation. This package does not
+patch fastp's algorithms or the upstream batch script.
 
 ## Installation
-
-Install from the public TAFFISH Hub index:
 
 ```sh
 taf update
 taf install fastp
+taf install fastp 1.3.7-r1
 ```
 
-Install the exact release:
+The exact release is available through the public index only after publication.
+
+## Quick start
+
+Work in a writable analysis directory containing your inputs:
 
 ```sh
-taf install fastp 1.3.6-r1
+taf-fastp fastp -i reads.fq -o clean.fq -h fastp.html -j fastp.json -w 4
+taf-fastp fastp-report-offline fastp.html fastp.offline.html
 ```
 
-For local testing before the app is published to the public index:
+Open `fastp.offline.html` directly in a local browser. No server, display,
+GPU, exposed port or browser inside the container is needed.
+
+Paired-end gzip/BGZF input and gzip output:
 
 ```sh
-taf install --from .
+taf-fastp fastp -i R1.fq.gz -I R2.fq.gz -o clean_R1.fq.gz -O clean_R2.fq.gz -h sample.html -j sample.json -w 4
+cat reads.fq | taf-fastp fastp --stdin --stdout -h stream.html -j stream.json -w 1 > clean.fq
 ```
 
-## Usage
+Input pairing/order is the user's responsibility. Choose adapter, UMI, merge,
+deduplication and filtering options according to the experiment; tiny smoke
+tests do not qualify every scientific option combination. fastp is intended for
+short reads; upstream's separate fastplong project targets long reads.
 
-Show TAFFISH app help:
+## Commands and wrapper boundary
 
 ```sh
 taf-fastp --help
-```
-
-Show the TAFFISH package version:
-
-```sh
 taf-fastp --version
-```
-
-Show the upstream fastp version:
-
-```sh
-taf-fastp fastp --version
+taf-fastp fastp --help
 taf-fastp -- --version
-```
-
-Show upstream command help:
-
-```sh
-taf-fastp fastp --help
-taf-fastp -- --help
-```
-
-Process single-end FASTQ and write explicit HTML/JSON reports:
-
-```sh
-taf-fastp fastp \
-  -i reads.fq \
-  -o clean.fq \
-  -h fastp.html \
-  -j fastp.json \
-  -w 4
-```
-
-Process paired-end gzip-compressed FASTQ:
-
-```sh
-taf-fastp fastp \
-  -i sample_R1.fq.gz \
-  -I sample_R2.fq.gz \
-  -o clean_R1.fq.gz \
-  -O clean_R2.fq.gz \
-  -h sample.fastp.html \
-  -j sample.fastp.json \
-  -w 8
-```
-
-Use adapter detection, length filtering, and polyG trimming controls:
-
-```sh
-taf-fastp fastp \
-  -i sample_R1.fq.gz \
-  -I sample_R2.fq.gz \
-  -o clean_R1.fq.gz \
-  -O clean_R2.fq.gz \
-  --detect_adapter_for_pe \
-  --length_required 30 \
-  --trim_poly_g \
-  -w 8
-```
-
-Read from stdin and write passing reads to stdout:
-
-```sh
-cat reads.fq | taf-fastp fastp --stdin --stdout -w 4 > clean.fq
-```
-
-Batch process a folder of FASTQ files with the upstream helper:
-
-```sh
-taf-fastp parallel.py \
-  -i raw_fastq \
-  -o clean_fastq \
-  -r fastp_reports \
-  -p 4 \
-  -a '-w 2 --detect_adapter_for_pe'
-```
-
-Because this is a command-mode TAFFISH tool, the first non-option argument is
-the in-container command. For normal fastp usage, naming the upstream `fastp`
-binary explicitly is the clearest form:
-
-```sh
-taf-fastp fastp -i reads.fq -o clean.fq -h fastp.html -j fastp.json
 taf-fastp parallel.py -h
+taf-fastp fastp-report-offline --help
 ```
 
-The app also accepts the common shorthand when the first argument is a fastp
-option:
+The entry remains the two-line container tag plus `fastp ::*ARGV*::`.
+Automatic command mode exposes fastp, parallel.py, python and python3.
+Name `fastp` explicitly to avoid confusing wrapper help with upstream's
+`-h HTML` option. The offline helper is an additional report-only utility,
+not a replacement entrypoint.
+
+TAFFISH 0.11.0 reconstructs shell arguments: retain literal quotes for values
+containing spaces. These forms are included in wrapper validation:
 
 ```sh
-taf-fastp -i reads.fq -o clean.fq -h fastp.html -j fastp.json
+taf-fastp fastp -i "'reads with spaces.fq'" -o "'clean with spaces.fq'" -h report.html -j report.json --report_title "'Tiny sample QC'" -w 1
+taf-fastp fastp-report-offline report.html "'offline report.html'"
 ```
 
-This README lists common usage patterns, not the full upstream manual. Because
-the TAFFISH wrapper calls the upstream `fastp` binary directly, official fastp
-options are available as-is, including merge mode, split output, interleaved
-input, unpaired/failed-read outputs, base correction, UMI handling,
-deduplication, overrepresentation analysis, and low-complexity filtering. Use
-the upstream help for the complete option list:
+## Batch processing
 
 ```sh
-taf-fastp fastp --help
+taf-fastp parallel.py -i raw_fastq -o clean_fastq -r fastp_reports -p 1 -a "'-w 2 --detect_adapter_for_pe'"
+taf-fastp fastp-report-offline fastp_reports/overall.html fastp_reports/overall.offline.html
 ```
 
-## Package
+Use simple path/file names without spaces or shell metacharacters for
+`parallel.py`: upstream constructs unquoted shell commands internally.
+For paths with spaces, call `fastp` directly using the tested quoting above.
+Batch input/output/report directories must be separate; set both `-o` and
+`-r` explicitly. Upstream does not reliably propagate child fastp failures;
+verify each expected clean FASTQ and per-sample JSON, not only the batch exit
+status or overall.html. No wrapper is added to conceal that upstream boundary.
 
-```text
-name: fastp
-command: taf-fastp
-version: 1.3.6-r1
-kind: tool
-image: ghcr.io/taffish/fastp:1.3.6-r1
+The converted aggregate's charts are self-contained; its per-sample `View`
+links are not embedded reports. Keep the aggregate beside the original HTML
+files to preserve these relative links. They open original CDN-dependent
+reports; for offline per-sample viewing, convert that HTML separately and open
+the new file, for example:
+
+```sh
+taf-fastp fastp-report-offline fastp_reports/sample_pe.fq.html fastp_reports/sample.offline.html
 ```
 
-## Container
+## Inputs, outputs and runtime writes
 
-The container image is built from `docker/Dockerfile`. It starts from
-`debian:12-slim`, downloads the upstream `v1.3.6` source archive from GitHub,
-builds the required `isa-l`, `libdeflate`, and Google Highway libraries, and
-installs fastp into `/usr/local/bin`.
+Inputs: plain, gzip or BGZF FASTQ; optional experiment-specific adapter FASTA.
+Outputs: filtered FASTQ (gzip when the output name ends in .gz), per-run JSON
+statistics and HTML reports. Set `-h`/`-j` to avoid the default filenames.
 
-The image includes these user-facing commands:
+Run in a new directory or use `--dont_overwrite` for fastp output protection.
+The offline helper takes exactly INPUT OUTPUT, refuses any existing output
+(including symlinks), leaves the original unchanged, and atomically creates a
+new HTML file. Its temporary file is confined to the output's parent directory.
 
-```text
-fastp
-parallel.py
-python
-python3
+No network is needed for processing or offline conversion. No runtime writes
+to /opt, /usr or the SIF root are required. Smoke uses a unique private /tmp
+directory; persistent outputs are written only to the current working directory
+or explicit writable binds.
+
+## Backends and shared inputs
+
+All three backends use the same installed commands:
+
+```sh
+TAFFISH_CONTAINER_BACKEND=docker taf-fastp fastp -i reads.fq -o clean.fq -h report.html -j report.json
+TAFFISH_CONTAINER_BACKEND=podman taf-fastp fastp -i reads.fq -o clean.fq -h report.html -j report.json
+TAFFISH_CONTAINER_BACKEND=apptainer taf-fastp fastp -i reads.fq -o clean.fq -h report.html -j report.json
 ```
 
-`parallel.py` is the upstream batch helper. It scans an input directory for
-FASTQ files, pairs files by read-name flags such as `R1`/`R2`, runs `fastp`,
-and writes per-sample reports plus an aggregate `overall.html`.
+Use a fresh output directory for each example. For read-only shared inputs
+outside the working directory, set the corresponding site/run policy:
 
-The fastp binary is built with the upstream compression dependencies:
-
-```text
-isa-l 2.31.0
-libdeflate 1.25
-Google Highway 1.3.0
+```sh
+TAFFISH_CONTAINER_BACKEND=docker TAFFISH_DOCKER_RUN_ARGS="-v /srv/reads:/inputs:ro" taf-fastp fastp -i /inputs/reads.fq -o clean.fq -h report.html -j report.json
+TAFFISH_CONTAINER_BACKEND=podman TAFFISH_PODMAN_RUN_ARGS="-v /srv/reads:/inputs:ro" taf-fastp fastp -i /inputs/reads.fq -o clean.fq -h report.html -j report.json
+TAFFISH_CONTAINER_BACKEND=apptainer TAFFISH_APPTAINER_RUN_ARGS="--bind /srv/reads:/inputs:ro" taf-fastp fastp -i /inputs/reads.fq -o clean.fq -h report.html -j report.json
 ```
 
-The Dockerfile verifies SHA256 checksums for the fastp, isa-l, libdeflate, and
-Google Highway source archives before building.
+The same bind can supply an adapter FASTA via `--adapter_fasta /inputs/adapters.fa`.
+The administrator may provision shared read-only inputs once; normal users
+need read/traverse access and their own writable output directory. Input
+FASTQ/adapter FASTA are project-specific, not a mechanically downloadable
+database/model family. Small built-in adapter strings are compiled into fastp.
+Thus there is no model installer, implicit download, discovery override or
+system-wide model cache; neither root nor a repeated per-user download is needed.
 
-`libdeflate` and Google Highway are linked into the fastp binary. `isa-l` is
-provided as a runtime shared library so the same Dockerfile can build cleanly on
-both amd64 and arm64.
+Apptainer requires native Linux. On macOS, use Docker or Podman, or run on a
+matching Linux server and copy HTML/JSON back for local viewing.
 
-This app intentionally does not bundle `fastplong`, FastQC, MultiQC, aligners,
-or downstream analysis tools. fastp itself generates HTML and JSON reports, and
-downstream aggregation or alignment should be handled by dedicated TAFFISH
-tools or flows. The upstream `parallel.py` aggregate report references CDN
-JavaScript libraries when viewed in a browser, so the file is created offline
-but some interactive charts may need network access to render.
+## Static HTML and offline browser assets
 
-The image is built and validated for:
+The GUI surface is a static report, not a desktop or service. Official source,
+README, entrypoints and companion links were checked: the Galaxy integration
+is a separate hosted platform, not an omitted in-container GUI dependency.
+FastQC, MultiQC, fastplong and aligners are separate analysis tools.
 
-```text
-linux/amd64
-linux/arm64
-```
+Original upstream per-sample HTML uses remote Plotly 1.2.0; parallel.py uses
+remote Plotly, Chart.js and normalize CSS. Generate reports offline, then run
+`fastp-report-offline` before viewing without network. It recognizes the
+pinned upstream templates, verifies all packaged asset SHA256 values, embeds
+the assets plus notices in a new file, and rejects unknown templates or
+unexpected external runtime references. It does not change FASTQ, JSON,
+statistics, figures' source data or the original report.
 
-The TAFFISH metadata declares a Docker smoke check:
+Pinned assets are Plotly 1.58.5 (both report types, the legacy plotly-latest
+line), Chart.js 4.5.1 and modern-normalize 2.0.0. The converter replaces the
+single-report 1.2.0 reference because its PNG export fails in current Chrome;
+the fixed 1.58.5 renderer passes actual button-driven PNG export. This affects
+only the converted HTML's rendering library, not data, analysis or raw reports.
+Original library notices are embedded with the converted report. Links to
+upstream/citations remain normal user-initiated links. Do not publish reports
+containing sensitive sample names, command paths or read identifiers without
+review; only open reports from trusted data and sources.
 
-```text
-exist: fastp, parallel.py, python, python3
-test:  fastp reports upstream version 1.3.6
-test:  upstream fastp help is available
-test:  upstream parallel.py help is available
-test:  the fastp binary resolves the bundled isa-l runtime library
-test:  a tiny single-end FASTQ can produce clean FASTQ plus HTML/JSON reports
-test:  upstream's worker-thread cap path is exercised on a tiny FASTQ
-test:  stdin/stdout mode works on a tiny FASTQ stream
-test:  a tiny paired-end FASTQ pair can produce gzip-compressed outputs
-test:  parallel.py can process a tiny paired-end folder and aggregate reports
-```
+## Container, dependencies and size
 
-During TAFFISH Hub indexing, this smoke metadata verifies that the published
-image exposes the expected command surface, reports the pinned upstream
-version, and can run minimal local FASTQ preprocessing/reporting workflows.
-The smoke checks are intentionally small and deterministic; they verify the
-container and representative fastp functionality, not every possible
-combination of upstream options or full scientific correctness for every data
-type.
+Debian 12-slim is pinned by multiarch digest. Source archives are SHA256-pinned:
+fastp 1.3.7, ISA-L 2.31.0, libdeflate 1.25 and Highway 1.3.0.
+ISA-L is a resolved shared library; libdeflate and Highway are statically linked.
+A separate builder stage keeps compilers, headers and source trees out of the
+runtime. Debug sections are stripped without deleting runtime symbols.
+The runtime contains Python 3 for upstream parallel.py and the small
+report/smoke helpers; no Conda, browser, GUI desktop or large reference bundle.
 
-Each smoke command is self-contained because the public index runs every
-`[smoke].test` entry in a fresh temporary container. No smoke entry depends on
-files created by an earlier entry.
+Original licenses and source identities live in `/usr/local/share/doc/fastp`.
+`source-notices/src/` also preserves six unmodified source files containing
+the bundled cmdline BSD-3-Clause notice (Hideyuki Tanaka) and the file-level
+MIT notice (Shifu Chen). These come from the same checksum-pinned fastp archive,
+not from a different cmdline release. `notices.sha256` binds all 11 original
+notice files; smoke independently requires every member, rejecting missing
+inventory rows, missing/corrupt files, duplicate entries and symlinks.
+Browser assets, checksums and original notices are in
+`/usr/local/share/fastp/report-assets`. Debian package copyright files under
+/usr/share/doc remain intact. Apt lists are removed in the same install layer.
+Final image sizes and runtime-directory measurements are recorded in the
+maintainer evidence rather than inferred from the Dockerfile.
 
-## Upstream
+## Validation and development
 
-- Project: fastp
-- Source: <https://github.com/OpenGene/fastp>
-- Release: <https://github.com/OpenGene/fastp/releases/tag/v1.3.6>
-- Upstream license: MIT
-- Primary citation: Chen 2025, doi:10.1002/imt2.70078, PMID:41112039
-- Additional citations: Chen 2023, doi:10.1002/imt2.107; Chen et al. 2018,
-  doi:10.1093/bioinformatics/bty560, PMID:30423086
-
-## Maintainer Notes
-
-Useful checks before publishing:
+From this checkout:
 
 ```sh
 taf check
-taf compile -- fastp --version
+taf build
+./target/taf-fastp-v1.3.7-r1 fastp --version
+taf run -b docker -- fastp --version
+docker build --platform linux/arm64 -f docker/Dockerfile -t ghcr.io/taffish/fastp:1.3.7-r1 .
 taf publish --build --release --dry-run
-docker build -t ghcr.io/taffish/fastp:1.3.6-r1 -f docker/Dockerfile .
-docker build --platform linux/amd64 -t ghcr.io/taffish/fastp:1.3.6-r1-amd64-test -f docker/Dockerfile .
-docker build --platform linux/arm64 -t ghcr.io/taffish/fastp:1.3.6-r1-arm64-test -f docker/Dockerfile .
-docker run --rm ghcr.io/taffish/fastp:1.3.6-r1 fastp --version
-docker run --rm ghcr.io/taffish/fastp:1.3.6-r1 fastp --help
 ```
 
-The repository wrapper files are licensed under Apache-2.0. Upstream fastp is
-distributed under the MIT license, and third-party runtime components are
-distributed under their own upstream licenses.
+The canonical Action uses app-root context `.` and native amd64/arm64 runners.
+The old standard workflow was replaced byte-for-byte from fresh `taf new`;
+no app-specific workflow edits. Build-time checks are version/help, dynamic
+library resolution, original notices and one small single-threaded SE path;
+browser rendering, thread-cap, FIFO/BGZF and full smoke stay at runtime.
+
+Manifest commands are independent fresh-container tests: existence, version,
+help, linkage, SE, thread cap, stdin, gzip PE, concatenated BGZF, FIFO, batch
+pairing, report conversion/error boundaries and notices. Release evidence
+also covers normal/read-only Docker/Podman, actual read-only Apptainer SIF,
+ordinary-user generated wrappers, actual shared read-only binds, host output
+ownership and browser interaction. These are engineering tests, not full
+scientific validation of every filter or sequencing technology.
+
+Final current-image evidence: native amd64 Docker/Podman normal and read-only,
+actual Apptainer SIF, plus native arm64 Podman normal/read-only; 140 independent
+manifest checks and 84 ordinary-user wrapper checks passed. The three backend
+axis is fully covered on xjp Linux amd64. Docker arm64 runtime was not separately
+revalidated after this notice-only repair; an earlier candidate encountered an
+engine startup interruption (Created, PID 0), not a current-image PASS.
+Arm64 Apptainer was not separately validated. There is no backend-specific
+argument or architecture coupling requiring the full Cartesian product.
+Final image sizes after the notice repair: amd64 124,241,296 bytes;
+arm64 148,207,338 bytes (about 48 KB added per image). The complete 11-file
+notice inventory passes current-image validation and failure injection on
+both native platforms; 15 host-side unit tests cover the verifier's boundaries.
+Browser checks cover single/aggregate charts, collapse/zoom and actual PNG
+downloads, with no runtime network requests or console errors. Static
+single-sample reports retain upstream's wide layout and may require horizontal
+scrolling on narrow screens. Batch View links have the explicit boundary above.
+
+Current validation receipts and final status:
+`docs-for-codex/app-update-evidence/fastp-1.3.7-r1-notice-fix-20260911/` in the Hub
+maintainer workspace. Publication, Action/GHCR success and accepted Index
+coverage are separate steps; this checkout does not imply any is complete.
+
+## License and citation
+
+Wrapper/helper code: Apache-2.0. Upstream fastp and libdeflate: MIT;
+ISA-L: BSD-3-Clause; Highway: Apache-2.0/BSD-3-Clause notices retained.
+The cmdline code bundled inside fastp retains its original BSD-3-Clause
+copyright/conditions/disclaimer, and file-level MIT copyrights are retained
+alongside fastp's top-level MIT license; they are not replaced by it.
+Plotly, Chart.js and modern-normalize retain their original MIT notices.
+
+- Chen 2025: doi:10.1002/imt2.70078; PMID:41112039.
+- Chen 2023: doi:10.1002/imt2.107.
+- Chen et al. 2018: doi:10.1093/bioinformatics/bty560; PMID:30423086.
