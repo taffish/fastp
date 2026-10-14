@@ -52,7 +52,7 @@ def convert(source, target):
         for marker, name in BATCH.items():
             text = text.replace(marker, inline(name))
     else:
-        raise ValueError('unsupported report template; use fastp 1.3.7 or parallel.py to generate the input')
+        raise ValueError('unsupported report template; use fastp 1.4.0 or parallel.py to generate the input')
     RuntimeRefs().feed(text)
     notices = '\n\n'.join(name + '\n' + value for name, value in assets.items() if name.endswith('LICENSE'))
     appendix = '<details id="taffish-fastp-offline-assets"><summary>Offline report assets and licenses</summary><pre>'

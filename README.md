@@ -8,24 +8,24 @@ filtering, adapter trimming and quality control of short-read FASTQ data.
 | Field | Value |
 |---|---|
 | Package / command | fastp / taf-fastp |
-| Version | 1.3.7-r1 |
-| Image | ghcr.io/taffish/fastp:1.3.7-r1 |
+| Version | 1.4.0-r1 |
+| Image | ghcr.io/taffish/fastp:1.4.0-r1 |
 | Native platforms | linux/amd64, linux/arm64 |
-| Upstream | OpenGene/fastp v1.3.7 |
-| Source commit | 8a2397b6628ae14127efdb7566f67fc05f9aea56 |
+| Upstream | OpenGene/fastp v1.4.0 |
+| Source commit | ee125a52fddae9d8189e13cd8a33ad04988a1351 |
 
-[Upstream 1.3.7](https://github.com/OpenGene/fastp/releases/tag/v1.3.7)
-fixes concatenated BGZF inputs containing embedded EOF blocks, avoids
-pre-evaluating non-seekable inputs, fixes pairing when a batch directory name
-contains R1, and creates BINDIR during installation. This package does not
-patch fastp's algorithms or the upstream batch script.
+[Upstream 1.4.0](https://github.com/OpenGene/fastp/releases/tag/v1.4.0)
+fixes a reader/worker/writer backpressure deadlock with more than 32 worker
+threads. Its queue limit now scales with worker count for single-end, paired-end
+and interleaved input. Earlier BGZF/FIFO and batch-pairing fixes remain included.
+This package does not patch fastp's algorithms or the upstream batch script.
 
 ## Installation
 
 ```sh
 taf update
 taf install fastp
-taf install fastp 1.3.7-r1
+taf install fastp 1.4.0-r1
 ```
 
 The exact release is available through the public index only after publication.
@@ -71,7 +71,7 @@ Name `fastp` explicitly to avoid confusing wrapper help with upstream's
 `-h HTML` option. The offline helper is an additional report-only utility,
 not a replacement entrypoint.
 
-TAFFISH 0.11.0 reconstructs shell arguments: retain literal quotes for values
+The tested TAFFISH wrapper reconstructs shell arguments: retain literal quotes for values
 containing spaces. These forms are included in wrapper validation:
 
 ```sh
@@ -168,7 +168,8 @@ statistics, figures' source data or the original report.
 Pinned assets are Plotly 1.58.5 (both report types, the legacy plotly-latest
 line), Chart.js 4.5.1 and modern-normalize 2.0.0. The converter replaces the
 single-report 1.2.0 reference because its PNG export fails in current Chrome;
-the fixed 1.58.5 renderer passes actual button-driven PNG export. This affects
+the fixed 1.58.5 renderer passed button-driven PNG export in the earlier 1.3.7
+packaging tests. Current-release browser acceptance is tracked separately below. This affects
 only the converted HTML's rendering library, not data, analysis or raw reports.
 Original library notices are embedded with the converted report. Links to
 upstream/citations remain normal user-initiated links. Do not publish reports
@@ -178,7 +179,7 @@ review; only open reports from trusted data and sources.
 ## Container, dependencies and size
 
 Debian 12-slim is pinned by multiarch digest. Source archives are SHA256-pinned:
-fastp 1.3.7, ISA-L 2.31.0, libdeflate 1.25 and Highway 1.3.0.
+fastp 1.4.0, ISA-L 2.31.0, libdeflate 1.25 and Highway 1.3.0.
 ISA-L is a resolved shared library; libdeflate and Highway are statically linked.
 A separate builder stage keeps compilers, headers and source trees out of the
 runtime. Debug sections are stripped without deleting runtime symbols.
@@ -195,8 +196,10 @@ inventory rows, missing/corrupt files, duplicate entries and symlinks.
 Browser assets, checksums and original notices are in
 `/usr/local/share/fastp/report-assets`. Debian package copyright files under
 /usr/share/doc remain intact. Apt lists are removed in the same install layer.
-Final image sizes and runtime-directory measurements are recorded in the
-maintainer evidence rather than inferred from the Dockerfile.
+Current native images measure 124,249,742 bytes (amd64) and 148,207,564 bytes
+(arm64). Runtime profiles show /usr at 124 MiB and 147 MiB respectively;
+report assets occupy 3.6 MiB and apt lists 4 KiB. No compiler or source build
+tree remains. Full inspect/history/directory receipts are in maintainer evidence.
 
 ## Validation and development
 
@@ -205,15 +208,15 @@ From this checkout:
 ```sh
 taf check
 taf build
-./target/taf-fastp-v1.3.7-r1 fastp --version
+./target/taf-fastp-v1.4.0-r1 fastp --version
 taf run -b docker -- fastp --version
-docker build --platform linux/arm64 -f docker/Dockerfile -t ghcr.io/taffish/fastp:1.3.7-r1 .
+docker build --platform linux/arm64 -f docker/Dockerfile -t ghcr.io/taffish/fastp:1.4.0-r1 .
 taf publish --build --release --dry-run
 ```
 
 The canonical Action uses app-root context `.` and native amd64/arm64 runners.
-The old standard workflow was replaced byte-for-byte from fresh `taf new`;
-no app-specific workflow edits. Build-time checks are version/help, dynamic
+The existing workflow is already byte-identical to fresh `taf new` and is
+unchanged for this update; there are no app-specific workflow edits. Build-time checks are version/help, dynamic
 library resolution, original notices and one small single-threaded SE path;
 browser rendering, thread-cap, FIFO/BGZF and full smoke stay at runtime.
 
@@ -221,31 +224,29 @@ Manifest commands are independent fresh-container tests: existence, version,
 help, linkage, SE, thread cap, stdin, gzip PE, concatenated BGZF, FIFO, batch
 pairing, report conversion/error boundaries and notices. Release evidence
 also covers normal/read-only Docker/Podman, actual read-only Apptainer SIF,
-ordinary-user generated wrappers, actual shared read-only binds, host output
-ownership and browser interaction. These are engineering tests, not full
+ordinary-user generated wrappers, actual shared read-only binds and host output
+ownership; browser interaction is a separate acceptance gate. These are engineering tests, not full
 scientific validation of every filter or sequencing technology.
 
-Final current-image evidence: native amd64 Docker/Podman normal and read-only,
-actual Apptainer SIF, plus native arm64 Podman normal/read-only; 140 independent
-manifest checks and 84 ordinary-user wrapper checks passed. The three backend
-axis is fully covered on xjp Linux amd64. Docker arm64 runtime was not separately
-revalidated after this notice-only repair; an earlier candidate encountered an
-engine startup interruption (Created, PID 0), not a current-image PASS.
-Arm64 Apptainer was not separately validated. There is no backend-specific
-argument or architecture coupling requiring the full Cartesian product.
-Final image sizes after the notice repair: amd64 124,241,296 bytes;
-arm64 148,207,338 bytes (about 48 KB added per image). The complete 11-file
-notice inventory passes current-image validation and failure injection on
-both native platforms; 15 host-side unit tests cover the verifier's boundaries.
-Browser checks cover single/aggregate charts, collapse/zoom and actual PNG
-downloads, with no runtime network requests or console errors. Static
-single-sample reports retain upstream's wide layout and may require horizontal
-scrolling on narrow screens. Batch View links have the explicit boundary above.
+The 1.4.0 candidate passed native amd64 and arm64 root-context builds, 189 fresh
+exact manifest probes and 105 generated-wrapper checks. Docker and Podman were
+tested on both architectures, and native amd64 Apptainer used a read-only SIF
+converted from the same candidate OCI. ARM64 Apptainer was not separately
+validated; the platform/backend axes have no identified additional coupling.
+Source/image/SIF/wrapper/output hashes were independently checked. Earlier
+1.3.7 receipts are not counted in those current-release totals.
 
-Current validation receipts and final status:
-`docs-for-codex/app-update-evidence/fastp-1.3.7-r1-notice-fix-20260911/` in the Hub
-maintainer workspace. Publication, Action/GHCR success and accepted Index
-coverage are separate steps; this checkout does not imply any is complete.
+Current-release browser acceptance remains pending: the browser tool denied
+local file access, so generated single-sample and batch reports were handed
+to the maintainer for chart, interaction, PNG export and View-link review.
+HTML generation, asset checksums and static checks are not browser acceptance.
+The 33+ actual-worker regression also requires a host exposing at least 33 CPUs;
+requesting more threads on a smaller host is clamped and does not validate that
+exact case. The unmodified upstream queue-limit function passed arithmetic
+boundary checks from 1 through 128 workers; this is not a high-core runtime test.
+Static single-sample reports retain upstream's wide layout and may require
+horizontal scrolling on narrow screens. Batch View links retain the boundary
+above. Publication and subsequent Action/GHCR/Index acceptance are separate.
 
 ## License and citation
 

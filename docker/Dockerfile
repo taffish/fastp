@@ -1,11 +1,14 @@
-ARG FASTP_VERSION=1.3.7
-ARG FASTP_SHA256=5b7d6880c66e9e10e5923c68ee0c0b5a30f59bd252d836c379c74f8533c26993
+ARG FASTP_VERSION=1.4.0
+ARG FASTP_SHA256=28c0537e9d1f32f5a5c404562e6a282bf373b034a4c3a3610d9aa31d6429b550
 ARG ISAL_VERSION=2.31.0
 ARG ISAL_SHA256=e218b7b2e241cfb8e8b68f54a6e5eed80968cc387c4b1af03708b54e9fb236f1
 ARG LIBDEFLATE_VERSION=1.25
 ARG LIBDEFLATE_SHA256=d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d
 ARG HIGHWAY_VERSION=1.3.0
 ARG HIGHWAY_SHA256=07b3c1ba2c1096878a85a31a5b9b3757427af963b1141ca904db2f9f4afe0bc2
+# 构建来源维护：下方四个源码归档使用版本 tag + SHA256；tag/URL 不是永久保存承诺，哈希用于拒绝字节变化。
+# 404/校验失败先排除网络、错误页和截断，再核对各自官方 tag/commit；旧材料只接受原哈希匹配的可信副本。
+# 采用新材料须重验源码、许可与逐平台/后端功能；已发布身份通过后继 release 修复，不盲改哈希或跳过校验。
 
 FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 AS builder
 
@@ -19,6 +22,9 @@ ARG LIBDEFLATE_SHA256
 ARG HIGHWAY_VERSION
 ARG HIGHWAY_SHA256
 
+# 两个 stage 的 Debian digest 固定基础镜像，但各自 apt-get 仍从活动仓库解析构建/运行依赖。
+# 重试不能恢复已下架的包；先核对仓库分支和包身份，恢复旧闭包需可信同版本材料或经核验的快照。
+# 更新依赖时需同时复核 builder 与 runtime 的动态库 ABI，并重新构建所有声明平台。
 RUN set -eux; \
     for attempt in 1 2 3; do \
       if apt-get -o Acquire::Retries=3 update \
@@ -122,6 +128,9 @@ RUN strip --strip-debug /opt/fastp/bin/fastp /opt/fastp-deps/lib/libisal.so.2.0.
       > /opt/fastp/share/doc/fastp/source-archives.txt
 
 COPY docker/report-assets.lock /opt/fastp/report-assets/report-assets.lock
+# 报告 JS/CSS 及许可原文也依赖远端：report-assets.lock 固定 URL/哈希，不保证 CDN/raw 文件长期可得。
+# 下载失败先核对 lock 对应版本、文件类型与完整性；迁移来源仍须匹配原哈希，不能用 latest 资源替代。
+# 若更新资源，重新核对许可及离线 HTML/浏览器功能；仅 fastp --version 或主命令 smoke 通过不够。
 RUN cd /opt/fastp/report-assets \
  && while read -r digest name url; do \
       curl -fsSL --retry 3 "$url" -o "$name" \

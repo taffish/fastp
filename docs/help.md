@@ -1,4 +1,4 @@
-taf-fastp 1.3.7-r1
+taf-fastp 1.4.0-r1
 
 Purpose:
   Preprocess short-read FASTQ and inspect QC results in static HTML/JSON.

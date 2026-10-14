@@ -74,7 +74,7 @@ def run(argv, input=None, expected=0):
 
 def report(name='report.json', count=1):
     d = json.loads(Path(name).read_text())
-    assert d['summary']['fastp_version'] == '1.3.7', d['summary']
+    assert d['summary']['fastp_version'] == '1.4.0', d['summary']
     assert d['summary']['before_filtering']['total_reads'] == count, d['summary']
     return d
 
